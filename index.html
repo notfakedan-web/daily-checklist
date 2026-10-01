@@ -1,0 +1,426 @@
+<title>Daily Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* Layout: month calendar on the left, the selected day's checklist on the right (stacks on phones).
+     Stream is the one habit that matters, so it wears the on-air red; everything else stays quiet. */
+  :root {
+    --bg: #eef0f4;          /* cool paper */
+    --surface: #ffffff;
+    --ink: #15171c;
+    --muted: #646b78;
+    --line: #d9dde5;
+    --soft: #e4e7ee;
+    --accent: #2f4fd8;      /* done */
+    --accent-soft: #dfe5fd;
+    --live: #e0322f;        /* stream / on air */
+    --live-soft: #fde3e2;
+    --miss: #b4541c;
+    --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+    --font-body: "Instrument Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #101217; --surface: #181b22; --ink: #eceef3; --muted: #9098a8; --line: #2a2f3a; --soft: #222630;
+    --accent: #7d95ff; --accent-soft: #232b4d; --live: #ff5a55; --live-soft: #3a1c1c; --miss: #e08a55;
+    color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #101217; --surface: #181b22; --ink: #eceef3; --muted: #9098a8; --line: #2a2f3a; --soft: #222630;
+    --accent: #7d95ff; --accent-soft: #232b4d; --live: #ff5a55; --live-soft: #3a1c1c; --miss: #e08a55;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 48px; display: grid; gap: 22px; }
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px; }
+  h1 { margin: 0; font: 800 clamp(28px, 5vw, 40px)/1.05 var(--font-display); letter-spacing: -.02em; text-wrap: balance; }
+  .sub { margin: 4px 0 0; color: var(--muted); }
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; min-width: 120px; }
+  .stat b { display: block; font: 600 22px/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .stat.live b { color: var(--live); }
+
+  .main { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+  @media (max-width: 820px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+  .cal { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .cal-head h2 { margin: 0; font: 600 20px/1.2 var(--font-display); }
+  .nav { display: flex; gap: 6px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 12px; }
+  .icon-btn:hover { background: var(--soft); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dow, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .dow div { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; text-align: center; padding-block: 4px; }
+  .day { position: relative; aspect-ratio: 1 / 1.05; max-width: 100%; border: 1px solid transparent; border-radius: 12px; background: var(--soft);
+         display: flex; flex-direction: column; justify-content: space-between; padding: 7px; text-align: left; min-width: 0; }
+  .day:hover { border-color: var(--line); }
+  .day.out { background: transparent; color: var(--muted); opacity: .45; }
+  .day .n { font: 500 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+  .day.today .n { background: var(--ink); color: var(--bg); border-radius: 6px; padding: 3px 5px; align-self: flex-start; }
+  .day.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .day.all { background: var(--accent-soft); }
+  .marks { display: flex; flex-wrap: wrap; gap: 3px; }
+  .mk { width: 9px; height: 9px; border-radius: 3px; border: 1.5px solid var(--muted); }
+  .mk.done { background: var(--accent); border-color: var(--accent); }
+  .mk.live { border-color: var(--live); }
+  .mk.live.done { background: var(--live); }
+  .mk.miss { border-color: var(--miss); border-style: dashed; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: grid; gap: 14px; }
+  .panel h2 { margin: 0; font: 600 22px/1.15 var(--font-display); text-wrap: balance; }
+  .when { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+  .chip { font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; padding: 4px 7px; border-radius: 6px; background: var(--soft); color: var(--ink); }
+  .bar { height: 6px; border-radius: 6px; background: var(--soft); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .25s ease; }
+  .list { display: grid; gap: 8px; }
+  .task { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border-radius: 12px;
+          border: 1px solid var(--line); background: var(--surface); text-align: left; width: 100%; }
+  .task:hover { background: var(--soft); }
+  .task.key { border-color: var(--live); background: linear-gradient(0deg, var(--live-soft), var(--live-soft)); }
+  .box { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--muted); display: grid; place-items: center; }
+  .box svg { width: 16px; height: 16px; opacity: 0; }
+  .task[aria-checked="true"] .box { background: var(--accent); border-color: var(--accent); }
+  .task.key[aria-checked="true"] .box { background: var(--live); border-color: var(--live); }
+  .task[aria-checked="true"] .box svg { opacity: 1; }
+  .task .name { font-weight: 600; }
+  .task[aria-checked="true"] .name { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--muted); }
+  .task .rule { font-size: 12.5px; color: var(--muted); }
+  .onair { font: 500 10.5px/1 var(--font-mono); letter-spacing: .1em; color: #fff; background: var(--live); padding: 5px 7px; border-radius: 5px; display: inline-flex; gap: 5px; align-items: center; }
+  .onair::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .empty { color: var(--muted); padding: 10px 0; }
+  .note { font-size: 12.5px; color: var(--muted); }
+
+  details.edit { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px 20px; }
+  details.edit summary { cursor: pointer; font-weight: 600; }
+  .rows { display: grid; gap: 10px; margin-top: 14px; }
+  .row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto auto; gap: 8px; align-items: end; }
+  @media (max-width: 640px) { .row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  input, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; min-width: 0; width: 100%; }
+  .star { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); padding-bottom: 8px; }
+  .star input { width: auto; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
+  .primary { border: 0; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 9px 16px; font-weight: 600; }
+  .ghost { border: 1px solid var(--line); background: transparent; border-radius: 10px; padding: 8px 14px; }
+  .danger { border: 1px solid var(--line); background: transparent; border-radius: 9px; padding: 7px 10px; color: var(--miss); }
+  @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Daily Checklist</h1>
+      <p class="sub" id="sub">Pick a day to see what's on it.</p>
+    </div>
+    <div class="stats">
+      <div class="stat live"><b id="st-streak">0</b><span>Stream streak</span></div>
+      <div class="stat"><b id="st-month">0%</b><span>This month</span></div>
+      <div class="stat"><b id="st-miss">0</b><span>Missed this month</span></div>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="cal" aria-label="Calendar">
+      <div class="cal-head">
+        <h2 id="month-label">October 2026</h2>
+        <div class="nav">
+          <button class="icon-btn" id="prev" aria-label="Previous month">‹</button>
+          <button class="icon-btn" id="today-btn">Today</button>
+          <button class="icon-btn" id="next" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+      <div class="grid" id="grid"></div>
+      <div class="legend">
+        <span><i class="mk live done"></i>Streamed</span>
+        <span><i class="mk done"></i>Done</span>
+        <span><i class="mk"></i>To do</span>
+        <span><i class="mk miss"></i>Missed</span>
+      </div>
+    </section>
+
+    <section class="panel" aria-live="polite">
+      <div class="when"><span id="when-chip" class="chip">Today</span><span id="when-count"></span></div>
+      <h2 id="day-title">Thursday, October 1</h2>
+      <div class="bar"><i id="day-bar"></i></div>
+      <div class="list" id="list"></div>
+      <p class="note" id="save-note">Loading your checklist…</p>
+    </section>
+  </div>
+
+  <details class="edit" id="edit">
+    <summary>Edit habits</summary>
+    <div class="rows" id="rows"></div>
+    <div class="actions">
+      <button class="ghost" id="add">Add habit</button>
+      <button class="primary" id="save">Save habits</button>
+      <span class="note" id="edit-note"></span>
+    </div>
+  </details>
+</div>
+
+<script>
+// ---------- dates (local calendar days, no time-zone drift) ----------
+const pad = n => String(n).padStart(2, "0");
+const key = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const dayNum = d => Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const monthKey = d => `m-${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+const fmtLong = d => d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+const fmtShort = d => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+// ---------- habits ----------
+// Defaults until you save your own: stream and gym every day, TRT every other day from Oct 1, 2026.
+const DEFAULT_HABITS = [
+  { id: "stream", name: "Stream", every: 1, start: "2026-10-01", key: true },
+  { id: "gym", name: "Gym", every: 1, start: "2026-10-01", key: false },
+  { id: "trt", name: "TRT", every: 2, start: "2026-10-01", key: false },
+];
+const isDue = (h, d) => { const diff = dayNum(d) - dayNum(parse(h.start)); return diff >= 0 && diff % h.every === 0; };
+const ruleText = (h, d) => {
+  if (h.every === 1) return "Every day";
+  const base = h.every === 2 ? "Every other day" : `Every ${h.every} days`;
+  let n = addDays(d, 1);
+  for (let i = 0; i < 400 && !isDue(h, n); i++) n = addDays(n, 1);
+  return `${base} · next ${fmtShort(n)}`;
+};
+
+// ---------- state ----------
+let habits = DEFAULT_HABITS.map(h => ({ ...h }));
+let months = {};                       // "m-2026-10" -> { "2026-10-01": { stream: true } }
+const today = new Date(); today.setHours(0, 0, 0, 0);
+let view = new Date(today.getFullYear(), today.getMonth(), 1);
+let selected = new Date(today);
+let store = null;                      // { save(docId, body) } once the database answers
+
+const done = (d, id) => !!(months[monthKey(d)]?.[key(d)]?.[id]);
+const dueOn = d => habits.filter(h => isDue(h, d));
+
+// ---------- calendar ----------
+const grid = document.getElementById("grid");
+function renderCalendar() {
+  document.getElementById("month-label").textContent = view.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  grid.textContent = "";
+  const first = new Date(view);
+  const lead = (first.getDay() + 6) % 7;           // weeks start on Monday
+  const startCell = addDays(first, -lead);
+  const daysInMonth = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+  const cells = Math.ceil((lead + daysInMonth) / 7) * 7;
+  for (let i = 0; i < cells; i++) {
+    const d = addDays(startCell, i);
+    const b = document.createElement("button");
+    b.className = "day";
+    if (d.getMonth() !== view.getMonth()) b.classList.add("out");
+    if (dayNum(d) === dayNum(today)) b.classList.add("today");
+    if (dayNum(d) === dayNum(selected)) b.classList.add("sel");
+    const due = dueOn(d);
+    const doneCount = due.filter(h => done(d, h.id)).length;
+    if (due.length && doneCount === due.length) b.classList.add("all");
+    b.setAttribute("aria-label", `${fmtLong(d)}: ${doneCount} of ${due.length} done`);
+    const n = document.createElement("span"); n.className = "n"; n.textContent = d.getDate();
+    const marks = document.createElement("span"); marks.className = "marks";
+    for (const h of due) {
+      const m = document.createElement("i");
+      m.className = "mk" + (h.key ? " live" : "");
+      if (done(d, h.id)) m.classList.add("done");
+      else if (dayNum(d) < dayNum(today)) m.classList.add("miss");
+      m.title = h.name;
+      marks.append(m);
+    }
+    b.append(n, marks);
+    b.addEventListener("click", () => {
+      selected = d;
+      if (d.getMonth() !== view.getMonth()) view = new Date(d.getFullYear(), d.getMonth(), 1);
+      render();
+    });
+    grid.append(b);
+  }
+}
+
+// ---------- day checklist ----------
+const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function renderDay() {
+  const d = selected, diff = dayNum(d) - dayNum(today);
+  document.getElementById("day-title").textContent = fmtLong(d);
+  document.getElementById("when-chip").textContent =
+    diff === 0 ? "Today" : diff === -1 ? "Yesterday" : diff === 1 ? "Tomorrow" : diff < 0 ? "Past" : "Upcoming";
+  const due = dueOn(d).sort((a, b) => (b.key ? 1 : 0) - (a.key ? 1 : 0));
+  const n = due.filter(h => done(d, h.id)).length;
+  document.getElementById("when-count").textContent = due.length ? `${n} of ${due.length} done` : "";
+  document.getElementById("day-bar").style.width = due.length ? `${(100 * n) / due.length}%` : "0%";
+  const list = document.getElementById("list");
+  list.textContent = "";
+  if (!due.length) { list.innerHTML = '<p class="empty">Nothing scheduled. Rest day.</p>'; return; }
+  for (const h of due) {
+    const b = document.createElement("button");
+    b.className = "task" + (h.key ? " key" : "");
+    b.setAttribute("role", "checkbox");
+    b.setAttribute("aria-checked", String(done(d, h.id)));
+    b.innerHTML = `<span class="box">${CHECK}</span><span><span class="name"></span><br><span class="rule"></span></span>`;
+    b.querySelector(".name").textContent = h.name;
+    b.querySelector(".rule").textContent = ruleText(h, d);
+    if (h.key) { const t = document.createElement("span"); t.className = "onair"; t.textContent = "ON AIR"; b.append(t); }
+    b.addEventListener("click", () => toggle(d, h.id));
+    list.append(b);
+  }
+}
+
+// ---------- header numbers ----------
+function renderStats() {
+  const stream = habits.find(h => h.key) || habits[0];
+  let streak = 0;
+  if (stream) {
+    let d = new Date(today);
+    if (isDue(stream, d) && !done(d, stream.id)) d = addDays(d, -1);   // today isn't over yet
+    for (let i = 0; i < 3650; i++, d = addDays(d, -1)) {
+      if (!isDue(stream, d)) continue;
+      if (dayNum(d) < dayNum(parse(stream.start))) break;
+      if (done(d, stream.id)) streak++; else break;
+    }
+  }
+  document.getElementById("st-streak").textContent = streak + (streak === 1 ? " day" : " days");
+  let due = 0, hit = 0, missed = 0;
+  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  for (let d = new Date(today.getFullYear(), today.getMonth(), 1); d <= end && dayNum(d) <= dayNum(today); d = addDays(d, 1)) {
+    for (const h of dueOn(d)) {
+      due++;
+      if (done(d, h.id)) hit++; else if (dayNum(d) < dayNum(today)) missed++;
+    }
+  }
+  document.getElementById("st-month").textContent = due ? Math.round((100 * hit) / due) + "%" : "–";
+  document.getElementById("st-miss").textContent = missed;
+  const t = dueOn(today), left = t.filter(h => !done(today, h.id)).map(h => h.name);
+  document.getElementById("sub").textContent = left.length ? `Still to do today: ${left.join(", ")}.` : "Everything for today is done.";
+}
+
+function render() { renderCalendar(); renderDay(); renderStats(); }
+
+// ---------- saving ----------
+const chains = {};
+function queueSave(docId, body) {        // one write at a time per document, newest wins
+  chains[docId] = (chains[docId] || Promise.resolve()).then(() => store && store.save(docId, body)).catch(e => {
+    document.getElementById("save-note").textContent = "Couldn't save that change. Check your connection and tick it again.";
+    console.error(e);
+  });
+}
+function toggle(d, id) {
+  const mk = monthKey(d), k = key(d);
+  const month = { ...(months[mk] || {}) };
+  const day = { ...(month[k] || {}) };
+  if (day[id]) delete day[id]; else day[id] = true;
+  if (Object.keys(day).length) month[k] = day; else delete month[k];
+  months[mk] = month;
+  render();
+  queueSave(mk, month);
+}
+
+// ---------- habit editor ----------
+const rows = document.getElementById("rows");
+function editorRow(h, i) {
+  const r = document.createElement("div");
+  r.className = "row";
+  r.innerHTML = `
+    <label>Habit<input id="h-name-${i}" class="f-name"></label>
+    <label>Repeats<select id="h-every-${i}" class="f-every">
+      <option value="1">Every day</option><option value="2">Every other day</option><option value="3">Every 3 days</option>
+      <option value="4">Every 4 days</option><option value="7">Once a week</option><option value="14">Every 2 weeks</option></select></label>
+    <label>Starting<input type="date" id="h-start-${i}" class="f-start"></label>
+    <label class="star"><input type="checkbox" id="h-key-${i}" class="f-key">Main one</label>
+    <button class="danger f-del" type="button">Remove</button>`;
+  r.querySelector(".f-name").value = h.name;
+  const sel = r.querySelector(".f-every");
+  if (![...sel.options].some(o => +o.value === h.every)) sel.add(new Option(`Every ${h.every} days`, h.every));
+  sel.value = String(h.every);
+  r.querySelector(".f-start").value = h.start;
+  r.querySelector(".f-key").checked = !!h.key;
+  r.querySelector(".f-del").addEventListener("click", () => r.remove());
+  r.dataset.id = h.id;
+  return r;
+}
+function renderEditor() { rows.textContent = ""; habits.forEach((h, i) => rows.append(editorRow(h, i))); }
+document.getElementById("add").addEventListener("click", () => {
+  rows.append(editorRow({ id: "h" + Date.now().toString(36), name: "", every: 1, start: key(today), key: false }, rows.children.length + Date.now() % 1000));
+  rows.lastElementChild.querySelector(".f-name").focus();
+});
+document.getElementById("save").addEventListener("click", () => {
+  const next = [...rows.children].map(r => ({
+    id: r.dataset.id,
+    name: r.querySelector(".f-name").value.trim(),
+    every: Math.max(1, parseInt(r.querySelector(".f-every").value, 10) || 1),
+    start: r.querySelector(".f-start").value || key(today),
+    key: r.querySelector(".f-key").checked,
+  })).filter(h => h.name);
+  if (!next.length) { document.getElementById("edit-note").textContent = "Add at least one habit with a name."; return; }
+  habits = next;
+  render();
+  queueSave("settings", { habits });
+  document.getElementById("edit-note").textContent = "Saved.";
+});
+["prev", "next"].forEach((id, i) => document.getElementById(id).addEventListener("click", () => {
+  view = new Date(view.getFullYear(), view.getMonth() + (i ? 1 : -1), 1); renderCalendar();
+}));
+document.getElementById("today-btn").addEventListener("click", () => {
+  selected = new Date(today); view = new Date(today.getFullYear(), today.getMonth(), 1); render();
+});
+
+render();
+renderEditor();
+
+// ---------- storage: your private space in this page's database, else this device ----------
+const LOCAL = "daily-checklist-v1";
+function useLocal(reason) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOCAL) || "{}");
+    if (saved.settings?.habits?.length) habits = saved.settings.habits;
+    months = saved.months || {};
+  } catch (e) { /* no browser storage either: works until the page closes */ }
+  store = { save(docId, body) {
+    try {
+      const all = JSON.parse(localStorage.getItem(LOCAL) || "{}");
+      if (docId === "settings") all.settings = body; else (all.months ||= {})[docId] = body;
+      localStorage.setItem(LOCAL, JSON.stringify(all));
+    } catch (e) { /* storage blocked */ }
+  } };
+  document.getElementById("save-note").textContent = reason;
+  render(); renderEditor();
+}
+
+(async () => {
+  const cl = window.claude;
+  if (!cl?.use) return useLocal("Saving on this device only.");
+  const [db, user] = await Promise.all([cl.use("db"), cl.use("user")]);
+  const uid = user ? await user.id() : null;
+  if (!db || !uid) return useLocal("Sign in to Claude to keep your checklist across devices. Saving on this device for now.");
+  const col = db.collection("data/users/" + uid);
+  store = { save: (docId, body) => col.doc(docId).set(body) };
+  let first = true;
+  col.onSnapshot(snap => {
+    const nextMonths = {};
+    let nextHabits = null;
+    for (const doc of snap.docs) {
+      if (doc.id === "settings") nextHabits = doc.data()?.habits;
+      else if (doc.id.startsWith("m-")) nextMonths[doc.id] = doc.data() || {};
+    }
+    months = nextMonths;
+    if (Array.isArray(nextHabits) && nextHabits.length) {
+      const changed = JSON.stringify(nextHabits) !== JSON.stringify(habits);
+      habits = nextHabits;
+      if (changed && !document.getElementById("edit").open) renderEditor();
+    }
+    if (first) { first = false; renderEditor(); }
+    document.getElementById("save-note").textContent = "Saved to your Claude account. Only you can see it.";
+    render();
+  }, e => {
+    document.getElementById("save-note").textContent = "Lost the connection to your saved checklist. Reload the page to reconnect.";
+    console.error(e);
+  });
+})();
+</script>
