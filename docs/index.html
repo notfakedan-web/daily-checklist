@@ -1,3 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Tap a day, tick off what's due.">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#eef0f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101217" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Checklist">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
 <title>Daily Checklist</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -112,7 +129,26 @@
   .danger { border: 1px solid var(--line); background: transparent; border-radius: 9px; padding: 7px 10px; color: var(--miss); }
   @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
-
+<style>
+  /* The skeleton the artifact runtime would otherwise provide. */
+  html { -webkit-text-size-adjust: 100%; background: var(--bg); }
+  body { margin: 0; -webkit-tap-highlight-color: transparent; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+  button, .task { -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  /* Installed on a phone there are no browser bars, so keep clear of the notch and home bar. */
+  .wrap {
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+    padding-bottom: calc(48px + env(safe-area-inset-bottom));
+    min-height: 100svh;
+  }
+  @media (display-mode: standalone) {
+    .wrap { padding-top: max(20px, env(safe-area-inset-top)); }
+  }
+</style>
+</head>
+<body>
 <div class="wrap">
   <header>
     <div>
@@ -459,3 +495,18 @@ function useLocal(reason) {
   });
 })();
 </script>
+<script>
+// Keep a copy of the app on the phone so it opens offline, and pick up new builds quietly.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    const had = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (had && !reloading) { reloading = true; location.reload(); }
+    });
+    navigator.serviceWorker.register("sw.js").catch(e => console.error(e));
+  });
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Daily Checklist
 
-A private habit calendar for a streamer's day: tap a day to see what's due and tick it off.
+A private habit calendar: tap a day to see what's due and tick it off.
 
 - **Stream** every day (the main one, marked ON AIR, with a streak count)
 - **Gym** every day
@@ -10,13 +10,30 @@ Habits can be changed in the page under **Edit habits** (name, how often, start 
 
 ## Where it runs
 
-It's hosted as a private Claude artifact: https://claude.ai/artifact/7QRLKs5vi82R3Q6vEc3wav
+Two places, from the same source file.
 
-Opening it needs your Claude login, and your check-offs are saved to your own private space in the
-artifact's database, so they follow you between phone and computer. Nobody else can see them.
+**On the phone (home-screen app).** `docs/` is published with GitHub Pages. Open that link in Safari
+on the iPhone, then Share → **Add to Home Screen**. It gets its own icon, opens fullscreen with no
+browser bars, and works with no signal. Check-offs are saved on that device.
 
-Opened as a plain file in a browser (outside Claude), `index.html` still works but saves only on that device.
+**In Claude (syncs between devices).** The same page is published as a private artifact:
+https://claude.ai/artifact/7QRLKs5vi82R3Q6vEc3wav — opening it needs your Claude login, and
+check-offs go to your own private space in the artifact's database, so they follow you between
+phone and computer.
 
-## Updating
+To carry days from one to the other, use **Copy backup** on one and **Restore backup** on the other
+(under Edit habits).
 
-Edit `index.html`, then ask Claude to republish it to the same artifact link.
+## Working on it
+
+`index.html` is the source, written as a Claude artifact body (no `<html>` / `<head>` wrapper, which
+the artifact runtime supplies). After editing it:
+
+```sh
+python3 tools/build.py     # wraps it into docs/index.html with the manifest, icons and offline cache
+```
+
+Then commit and push, which updates the phone app. To update the Claude version, ask Claude to
+republish `index.html` to the same artifact link.
+
+`tools/make_icons.py` regenerates the home-screen icons.
